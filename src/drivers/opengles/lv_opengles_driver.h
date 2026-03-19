@@ -38,6 +38,15 @@ extern "C" {
  */
 void lv_opengles_init(void);
 
+#if LV_USE_EGL
+/**
+ * Load LVGL's internal EGL/GLES entry points from the current EGL context and initialize OpenGL.
+ * Use this when the application creates the EGL context itself instead of using LVGL's EGL helper.
+ * @return true on success, false on failure
+ */
+bool lv_opengles_init_from_current_egl_context(void);
+#endif
+
 /**
  * Deinitialize OpenGL
  * @note    it is not necessary to call this if you use `lv_opengles_glfw_window_create`

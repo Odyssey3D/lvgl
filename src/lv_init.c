@@ -90,6 +90,9 @@
 #if LV_USE_DRAW_EVE
     #include "draw/eve/lv_draw_eve.h"
 #endif
+#if LV_USE_DRAW_NANOVG
+    #include "draw/nanovg/lv_draw_nanovg.h"
+#endif
 
 /*********************
  *      DEFINES
@@ -283,6 +286,10 @@ void lv_init(void)
 
 #if LV_USE_DRAW_EVE
     lv_draw_eve_init();
+#endif
+
+#if LV_USE_DRAW_NANOVG
+    lv_draw_nanovg_init();
 #endif
 
     lv_obj_style_init();

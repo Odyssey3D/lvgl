@@ -86,6 +86,7 @@ static void draw_event_cb(lv_event_t * e);
 /**********************
  *  STATIC VARIABLES
  **********************/
+static GLuint root_framebuffer_id;
 
 /**********************
  *      MACROS
@@ -115,6 +116,11 @@ void lv_draw_nanovg_init(void)
     lv_nanovg_image_cache_init(unit);
     lv_nanovg_fbo_cache_init(unit);
     lv_draw_nanovg_label_init(unit);
+}
+
+void lv_draw_nanovg_set_root_framebuffer(unsigned fb_id)
+{
+    root_framebuffer_id = (GLuint)fb_id;
 }
 
 int lv_nanovg_fb_get_image_handle(struct NVGLUframebuffer * fb)
@@ -221,8 +227,8 @@ static void on_layer_changed(lv_layer_t * new_layer)
     LV_PROFILER_DRAW_BEGIN;
 
     if(!new_layer->user_data) {
-        /* Bind the default framebuffer for normal rendering */
-        nvgluBindFramebuffer(NULL);
+        /* Bind the configured root framebuffer, or the OpenGL default framebuffer if unset. */
+        glBindFramebuffer(GL_FRAMEBUFFER, root_framebuffer_id);
         LV_PROFILER_DRAW_END;
         return;
     }

@@ -10,6 +10,10 @@
 #include "lv_opengles_driver.h"
 #if LV_USE_OPENGLES
 
+#if LV_USE_EGL
+#include <dlfcn.h>
+#endif
+
 #include "../../misc/lv_types.h"
 #include "../../misc/lv_profiler.h"
 #include "../../misc/lv_matrix.h"
@@ -67,6 +71,10 @@ static float lv_opengles_map_float(float x, float min_in, float max_in, float mi
 static void populate_vertex_buffer(float vertex_buffer[LV_OPENGLES_VERTEX_BUFFER_LEN],
                                    lv_display_rotation_t rotation, bool * h_flip, bool * v_flip,
                                    float clip_x1, float clip_y1, float clip_x2, float clip_y2);
+#if LV_USE_EGL
+static void * lv_opengles_load_lib(const char ** libs, size_t count);
+static GLADapiproc lv_opengles_glad_egl_load_cb(void * userdata, const char * name);
+#endif
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -134,6 +142,53 @@ void lv_opengles_init(void)
 
     is_init = true;
 }
+
+#if LV_USE_EGL
+bool lv_opengles_init_from_current_egl_context(void)
+{
+    if(is_init) return true;
+
+    const char * egl_libs[] = {"libEGL.so", "libEGL.so.1"};
+    const char * gl_libs[] = {"libGLESv2.so", "libGLESv2.so.2"};
+
+    void * egl_lib_handle = lv_opengles_load_lib(egl_libs, sizeof(egl_libs) / sizeof(egl_libs[0]));
+    if(!egl_lib_handle) {
+        LV_LOG_ERROR("Failed to load EGL shared lib: %s", dlerror());
+        return false;
+    }
+
+    EGLDisplay (*get_current_display)(void) = NULL;
+    *(void **)(&get_current_display) = dlsym(egl_lib_handle, "eglGetCurrentDisplay");
+    if(!get_current_display) {
+        LV_LOG_ERROR("Failed to load eglGetCurrentDisplay");
+        return false;
+    }
+
+    EGLDisplay egl_display = get_current_display();
+    if(egl_display == EGL_NO_DISPLAY) {
+        LV_LOG_ERROR("No current EGL display");
+        return false;
+    }
+
+    if(!gladLoadEGLUserPtr(egl_display, lv_opengles_glad_egl_load_cb, egl_lib_handle)) {
+        LV_LOG_ERROR("Failed to load EGL entry points");
+        return false;
+    }
+
+    void * gl_lib_handle = lv_opengles_load_lib(gl_libs, sizeof(gl_libs) / sizeof(gl_libs[0]));
+    if(!gl_lib_handle) {
+        LV_LOG_ERROR("Failed to load GLES shared lib: %s", dlerror());
+        return false;
+    }
+
+    if(!gladLoadGLES2UserPtr(lv_opengles_glad_egl_load_cb, gl_lib_handle)) {
+        LV_LOG_ERROR("Failed to load GLES entry points");
+        return false;
+    }
+
+    return true;
+}
+#endif
 
 void lv_opengles_deinit(void)
 {
@@ -762,4 +817,32 @@ static void populate_vertex_buffer(float vertex_buffer[LV_OPENGLES_VERTEX_BUFFER
             break;
     }
 }
+
+#if LV_USE_EGL
+static void * lv_opengles_load_lib(const char ** libs, size_t count)
+{
+    const int mode = RTLD_NOW | RTLD_NODELETE;
+    for(size_t i = 0; i < count; ++i) {
+        void * handle = dlopen(libs[i], mode);
+        if(handle) return handle;
+    }
+    return NULL;
+}
+
+static GLADapiproc lv_opengles_glad_egl_load_cb(void * userdata, const char * name)
+{
+    union {
+        GLADapiproc fn;
+        void * ptr;
+    } result;
+
+    if(eglGetProcAddress) {
+        GLADapiproc sym = (GLADapiproc)eglGetProcAddress(name);
+        if(sym) return sym;
+    }
+
+    result.ptr = dlsym(userdata, name);
+    return result.fn;
+}
+#endif
 #endif /* LV_USE_OPENGLES */

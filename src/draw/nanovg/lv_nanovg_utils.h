@@ -176,6 +176,7 @@ lv_draw_buf_t * lv_nanovg_reshape_global_image(struct _lv_draw_nanovg_unit_t * u
                                                uint32_t w,
                                                uint32_t h);
 
+
 /**********************
  *      MACROS
  **********************/

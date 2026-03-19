@@ -35,6 +35,13 @@ extern "C" {
  */
 void lv_draw_nanovg_init(void);
 
+/**
+ * Set the framebuffer used for the root NanoVG layer.
+ * Pass 0 to render to the OpenGL default framebuffer.
+ * @param fb_id     OpenGL framebuffer id
+ */
+void lv_draw_nanovg_set_root_framebuffer(unsigned fb_id);
+
 /**********************
  *      MACROS
  **********************/
